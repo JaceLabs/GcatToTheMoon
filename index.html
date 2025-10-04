@@ -315,11 +315,6 @@
                 const woofPrice = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) / Number(web3.utils.fromWei(woofReserveWgt, 'ether'));
                 const gatePrice = Number(web3.utils.fromWei(gateReserveGcat, 'ether')) / Number(web3.utils.fromWei(gateReserveWgt, 'ether'));
                 const priceDiff = Math.abs(woofPrice - gatePrice) / Math.min(woofPrice, gatePrice);
-                if (priceDiff > 0.05) {
-                    document.getElementById('networkStatus').innerText = 'Price difference too high';
-                    document.getElementById('swapButton').disabled = true;
-                    return;
-                }
 
                 const totalLiquidity = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) + Number(web3.utils.fromWei(gateReserveGcat, 'ether'));
                 const woofRatio = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) / totalLiquidity;
@@ -380,9 +375,6 @@
                 const woofPrice = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) / Number(web3.utils.fromWei(woofReserveWgt, 'ether'));
                 const gatePrice = Number(web3.utils.fromWei(gateReserveGcat, 'ether')) / Number(web3.utils.fromWei(gateReserveWgt, 'ether'));
                 const priceDiff = Math.abs(woofPrice - gatePrice) / Math.min(woofPrice, gatePrice);
-                if (priceDiff > 0.05) {
-                    throw new Error('Price difference too high');
-                }
 
                 const totalLiquidity = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) + Number(web3.utils.fromWei(gateReserveGcat, 'ether'));
                 const woofRatio = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) / totalLiquidity;
