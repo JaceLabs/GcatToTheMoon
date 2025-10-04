@@ -153,7 +153,7 @@
         ];
 
         const dualSellAbi = [
-            {"inputs":[{"internalType":"uint256","name":"gcatAmount","type":"uint256"},{"internalType":"uint256","name":"woofGdogAmount","type":"uint256"},{"internalType":"uint256","name":"woofGtMin","type":"uint256"},{"internalType":"uint256","name":"gateGdogAmount","type":"uint256"},{"internalType":"uint256","name":"gateGtMin","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"sellOnBoth","outputs":[],"stateMutability":"nonpayable","type":"function"}
+            {"inputs":[{"internalType":"uint256","name":"gcatAmount","type":"uint256"},{"internalType":"uint256","name":"woofGcatAmount","type":"uint256"},{"internalType":"uint256","name":"woofGtMin","type":"uint256"},{"internalType":"uint256","name":"gateGcatAmount","type":"uint256"},{"internalType":"uint256","name":"gateGtMin","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"sellOnBoth","outputs":[],"stateMutability":"nonpayable","type":"function"}
         ];
 
         const chains = {
@@ -298,23 +298,32 @@
                 const woofToken0 = await woofPairContract.methods.token0().call();
                 const gateToken0 = await gatePairContract.methods.token0().call();
 
-                const isWoofGdogToken0 = woofToken0.toLowerCase() === GCAT.toLowerCase();
-                const woofReserveGdog = isWoofGdogToken0 ? woofReserves[0] : woofReserves[1];
-                const woofReserveWgt = isWoofGdogToken0 ? woofReserves[1] : woofReserves[0];
-                const isGateGdogToken0 = gateToken0.toLowerCase() === GCAT.toLowerCase();
-                const gateReserveGdog = isGateGdogToken0 ? gateReserves[0] : gateReserves[1];
-                const gateReserveWgt = isGateGdogToken0 ? gateReserves[1] : gateReserves[0];
+                const isWoofGcatToken0 = woofToken0.toLowerCase() === GCAT.toLowerCase();
+                const woofReserveGcat = isWoofGcatToken0 ? woofReserves[0] : woofReserves[1];
+                const woofReserveWgt = isWoofGcatToken0 ? woofReserves[1] : woofReserves[0];
+                const isGateGcatToken0 = gateToken0.toLowerCase() === GCAT.toLowerCase();
+                const gateReserveGcat = isGateGcatToken0 ? gateReserves[0] : gateReserves[1];
+                const gateReserveWgt = isGateGcatToken0 ? gateReserves[1] : gateReserves[0];
 
-                if (web3.utils.toBN(woofReserveGdog).isZero() || web3.utils.toBN(gateReserveGdog).isZero()) {
-                    document.getElementById('networkStatus').innerText = 'Pool not initialized - check pair addresses';
+                const minLiquidity = web3.utils.toWei('1000', 'ether');
+                if (web3.utils.toBN(woofReserveGcat).lt(minLiquidity) || web3.utils.toBN(gateReserveGcat).lt(minLiquidity)) {
+                    document.getElementById('networkStatus').innerText = 'Pool liquidity too low';
                     document.getElementById('swapButton').disabled = true;
-                    console.warn('Reserves zero - invalid pair addresses on Gate Layer (10088)');
                     return;
                 }
 
-                const totalLiquidity = Number(web3.utils.fromWei(woofReserveGdog, 'ether')) + Number(web3.utils.fromWei(gateReserveGdog, 'ether'));
-                const woofRatio = Number(web3.utils.fromWei(gateReserveGdog, 'ether')) / totalLiquidity;
-                const gateRatio = 1 - woofRatio;
+                const woofPrice = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) / Number(web3.utils.fromWei(woofReserveWgt, 'ether'));
+                const gatePrice = Number(web3.utils.fromWei(gateReserveGcat, 'ether')) / Number(web3.utils.fromWei(gateReserveWgt, 'ether'));
+                const priceDiff = Math.abs(woofPrice - gatePrice) / Math.min(woofPrice, gatePrice);
+                if (priceDiff > 0.05) {
+                    document.getElementById('networkStatus').innerText = 'Price difference too high';
+                    document.getElementById('swapButton').disabled = true;
+                    return;
+                }
+
+                const totalLiquidity = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) + Number(web3.utils.fromWei(gateReserveGcat, 'ether'));
+                const woofRatio = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) / totalLiquidity;
+                const gateRatio = Number(web3.utils.fromWei(gateReserveGcat, 'ether')) / totalLiquidity;
 
                 document.getElementById('woofRatio').innerText = `${(woofRatio * 100).toFixed(2)}%`;
                 document.getElementById('gateRatio').innerText = `${(gateRatio * 100).toFixed(2)}%`;
@@ -322,7 +331,7 @@
                 document.getElementById('networkStatus').innerText = `Ratios: WoofSwap ${(woofRatio * 100).toFixed(2)}%, GateSwap ${(gateRatio * 100).toFixed(2)}%`;
                 if (!isBuyMode) await checkAllowance();
             } catch (error) {
-                document.getElementById('networkStatus').innerText = 'Failed to calculate ratios - check network/pair addresses';
+                document.getElementById('networkStatus').innerText = 'Failed to calculate ratios';
                 document.getElementById('progressStatus').innerText = `Error: ${error.message}`;
                 document.getElementById('swapButton').disabled = true;
             }
@@ -356,20 +365,28 @@
                 const woofToken0 = await woofPairContract.methods.token0().call();
                 const gateToken0 = await gatePairContract.methods.token0().call();
 
-                const isWoofGdogToken0 = woofToken0.toLowerCase() === GCAT.toLowerCase();
-                const woofReserveGdog = isWoofGdogToken0 ? woofReserves[0] : woofReserves[1];
-                const woofReserveWgt = isWoofGdogToken0 ? woofReserves[1] : woofReserves[0];
-                const isGateGdogToken0 = gateToken0.toLowerCase() === GCAT.toLowerCase();
-                const gateReserveGdog = isGateGdogToken0 ? gateReserves[0] : gateReserves[1];
-                const gateReserveWgt = isGateGdogToken0 ? gateReserves[1] : gateReserves[0];
+                const isWoofGcatToken0 = woofToken0.toLowerCase() === GCAT.toLowerCase();
+                const woofReserveGcat = isWoofGcatToken0 ? woofReserves[0] : woofReserves[1];
+                const woofReserveWgt = isWoofGcatToken0 ? woofReserves[1] : woofReserves[0];
+                const isGateGcatToken0 = gateToken0.toLowerCase() === GCAT.toLowerCase();
+                const gateReserveGcat = isGateGcatToken0 ? gateReserves[0] : gateReserves[1];
+                const gateReserveWgt = isGateGcatToken0 ? gateReserves[1] : gateReserves[0];
 
-                if (web3.utils.toBN(woofReserveGdog).isZero() || web3.utils.toBN(gateReserveGdog).isZero()) {
-                    throw new Error('Pool not initialized - invalid pair addresses');
+                const minLiquidity = web3.utils.toWei('1000', 'ether');
+                if (web3.utils.toBN(woofReserveGcat).lt(minLiquidity) || web3.utils.toBN(gateReserveGcat).lt(minLiquidity)) {
+                    throw new Error('Pool liquidity too low');
                 }
 
-                const totalLiquidity = Number(web3.utils.fromWei(woofReserveGdog, 'ether')) + Number(web3.utils.fromWei(gateReserveGdog, 'ether'));
-                const woofRatio = Number(web3.utils.fromWei(gateReserveGdog, 'ether')) / totalLiquidity;
-                const gateRatio = 1 - woofRatio;
+                const woofPrice = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) / Number(web3.utils.fromWei(woofReserveWgt, 'ether'));
+                const gatePrice = Number(web3.utils.fromWei(gateReserveGcat, 'ether')) / Number(web3.utils.fromWei(gateReserveWgt, 'ether'));
+                const priceDiff = Math.abs(woofPrice - gatePrice) / Math.min(woofPrice, gatePrice);
+                if (priceDiff > 0.05) {
+                    throw new Error('Price difference too high');
+                }
+
+                const totalLiquidity = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) + Number(web3.utils.fromWei(gateReserveGcat, 'ether'));
+                const woofRatio = Number(web3.utils.fromWei(woofReserveGcat, 'ether')) / totalLiquidity;
+                const gateRatio = Number(web3.utils.fromWei(gateReserveGcat, 'ether')) / totalLiquidity;
 
                 if (isBuyMode) {
                     const gtAmountWei = web3.utils.toWei(amount, 'ether');
@@ -377,8 +394,8 @@
                     const gateValue = web3.utils.toBN(gtAmountWei).sub(woofValue);
 
                     const slippagePercent = parseFloat(slippage) / 100;
-                    const woofAmountOutMin = web3.utils.toBN(woofValue).mul(web3.utils.toBN(woofReserveGdog)).div(web3.utils.toBN(woofReserveWgt)).mul(web3.utils.toBN(Math.floor((1 - slippagePercent) * 1000))).div(web3.utils.toBN(1000));
-                    const gateAmountOutMin = web3.utils.toBN(gateValue).mul(web3.utils.toBN(gateReserveGdog)).div(web3.utils.toBN(gateReserveWgt)).mul(web3.utils.toBN(Math.floor((1 - slippagePercent) * 1000))).div(web3.utils.toBN(1000));
+                    const woofAmountOutMin = web3.utils.toBN(woofValue).mul(web3.utils.toBN(woofReserveGcat)).div(web3.utils.toBN(woofReserveWgt)).mul(web3.utils.toBN(Math.floor((1 - slippagePercent) * 1000))).div(web3.utils.toBN(1000));
+                    const gateAmountOutMin = web3.utils.toBN(gateValue).mul(web3.utils.toBN(gateReserveGcat)).div(web3.utils.toBN(gateReserveWgt)).mul(web3.utils.toBN(Math.floor((1 - slippagePercent) * 1000))).div(web3.utils.toBN(1000));
 
                     const tx = await dualBuyContract.methods.buyOnBoth(
                         woofValue,
@@ -396,18 +413,18 @@
                     document.getElementById('progressStatus').innerText = `Success: ${tx.transactionHash}`;
                 } else {
                     const gcatAmountWei = web3.utils.toWei(amount, 'ether');
-                    const woofGdogAmount = web3.utils.toBN(gcatAmountWei).mul(web3.utils.toBN(Math.floor(woofRatio * 1000000))).div(web3.utils.toBN(1000000));
-                    const gateGdogAmount = web3.utils.toBN(gcatAmountWei).sub(woofGdogAmount);
+                    const woofGcatAmount = web3.utils.toBN(gcatAmountWei).mul(web3.utils.toBN(Math.floor(woofRatio * 1000000))).div(web3.utils.toBN(1000000));
+                    const gateGcatAmount = web3.utils.toBN(gcatAmountWei).sub(woofGcatAmount);
 
                     const slippagePercent = parseFloat(slippage) / 100;
-                    const woofGtMin = web3.utils.toBN(woofGdogAmount).mul(web3.utils.toBN(woofReserveWgt)).div(web3.utils.toBN(woofReserveGdog)).mul(web3.utils.toBN(Math.floor((1 - slippagePercent) * 1000))).div(web3.utils.toBN(1000));
-                    const gateGtMin = web3.utils.toBN(gateGdogAmount).mul(web3.utils.toBN(gateReserveWgt)).div(web3.utils.toBN(gateReserveGdog)).mul(web3.utils.toBN(Math.floor((1 - slippagePercent) * 1000))).div(web3.utils.toBN(1000));
+                    const woofGtMin = web3.utils.toBN(woofGcatAmount).mul(web3.utils.toBN(woofReserveWgt)).div(web3.utils.toBN(woofReserveGcat)).mul(web3.utils.toBN(Math.floor((1 - slippagePercent) * 1000))).div(web3.utils.toBN(1000));
+                    const gateGtMin = web3.utils.toBN(gateGcatAmount).mul(web3.utils.toBN(gateReserveWgt)).div(web3.utils.toBN(gateReserveGcat)).mul(web3.utils.toBN(Math.floor((1 - slippagePercent) * 1000))).div(web3.utils.toBN(1000));
 
                     const tx = await dualSellContract.methods.sellOnBoth(
                         gcatAmountWei,
-                        woofGdogAmount,
+                        woofGcatAmount,
                         woofGtMin,
-                        gateGdogAmount,
+                        gateGcatAmount,
                         gateGtMin,
                         Math.floor(Date.now() / 1000) + 60 * 30
                     ).send({
@@ -427,7 +444,7 @@
                     status.innerText = `Insufficient ${isBuyMode ? 'GT' : 'GCAT'} for ${isBuyMode ? 'buy' : 'sell'}`;
                     document.getElementById('progressStatus').innerText = 'Error: Insufficient funds';
                 } else if (error.message.includes('execution reverted')) {
-                    status.innerText = `Transaction reverted - check pair addresses or ${isBuyMode ? 'GT' : 'GCAT'} amount`;
+                    status.innerText = `Transaction reverted`;
                     document.getElementById('progressStatus').innerText = `Error: Reverted - ${error.message}`;
                 } else {
                     status.innerText = `${isBuyMode ? 'Buy' : 'Sell'} failed`;
